@@ -1,0 +1,240 @@
+import { useState, useEffect } from "react";
+import { SafeAreaView, View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { ScrollView, TextInput } from "react-native-gesture-handler";
+import { Stack, useRouter } from "expo-router";
+import { auth } from "./config/firebase";
+import { router, Link } from "expo-router";
+import { db } from "./config/firebase";
+import { getDocs, collection, where, query, onSnapshot } from "firebase/firestore";
+
+const App = () => {
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+             if (!user) {
+                router.replace('/signin');
+            }
+        })
+
+        return unsubscribe;
+    }, []);
+
+    const [parkingSpaces, setParkingSpaces] = useState([]);
+    const parkingSpacesRef = collection(db, "parkingspaces");
+    // const q = query(parkingSpacesRef, where("name", ">=", "GZ1"));
+
+    const [listView, setListView] = useState(false);
+    const toggleListView = () => {
+        setListView(!listView);
+    };
+
+    const [search, setSearch] = useState("");
+    const searchQuery = query(parkingSpacesRef, where("name", ">=", search));
+
+    // useEffect(() => {
+    //     const getParkingSpaces = async () => {
+    //         try {
+    //             const data = await getDocs(parkingSpacesRef);
+    //             const filteredData = data.docs.map((doc) => ({
+    //                 ...doc.data(), 
+    //                 id: doc.id
+    //             }));
+    //             console.log(filteredData);
+    //             setParkingSpaces(filteredData);
+    //         } catch (error) {
+    //             console.log(error);
+    //         }
+    //     };
+    //     getParkingSpaces();
+    // }, [])
+
+      useEffect(() => {
+        const unsubscribe = onSnapshot(parkingSpacesRef, (querySnapshot) => {
+            const updatedData = querySnapshot.docs.map((doc) => ({
+                ...doc.data(),
+                id: doc.id
+            }));
+            // console.log(updatedData);
+            setParkingSpaces(updatedData);
+        });
+    
+        return () => unsubscribe();
+    }, []);
+    
+    const addNewUser = async () => {
+        try {
+            const response = await fetch('http://192.168.4.84:5000/sensordata', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sensorToken: "ZCf6xc$cHJ@y4Tre3Sz4BeoC*RsWr9!C", status: true })
+            });
+    
+            if (response.ok) {
+                console.log('Success');
+            } else {
+                const error = await response.text();
+                console.error(error);
+            }
+    
+            const data = await response.text();
+            console.log(data);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    
+    // addNewUser();
+
+    return (
+        <SafeAreaView className="bg-white h-screen">
+            <Stack.Screen options={{
+                headerTitle: "Spot Availability", 
+                headerShown: true, 
+                headerTitleStyle: {fontSize: 28},
+                headerBackTitle: "Back"
+            }}/>
+
+            {/* <View className="flex mx-4 bg-neutral-100 rounded-full border border-neutral-200 mb-4">
+                <TextInput style={styles.searchBarText} placeholder="Search" className="py-3 px-4" placeholderTextColor="#a3a3a3"></TextInput>
+            </View>
+
+            <View className="flex flex-row min-w-full justify-center mb-4">
+                <View className="flex flex-row bg-neutral-100 rounded-full p-[1px] border-[1px] border-neutral-200">
+                    <TouchableOpacity className={`${listView ? 'bg-emerald-800' : 'bg-neutral-100'} py-3 px-5 rounded-full`} onPress={toggleListView}>
+                        <Text className={`${listView ? 'text-white' : 'text-black'} font-semibold`}>List View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity className={`${!listView ? 'bg-emerald-800' : 'bg-neutral-100'} py-3 px-5 rounded-full`} onPress={toggleListView}>
+                        <Text className={`${!listView ? 'text-white' : 'text-black'} font-semibold`}>Card View</Text>
+                    </TouchableOpacity>
+                </View>
+            </View> */}
+
+            {/* {viewMode && (
+                <ScrollView className="flex gap-5 min-h-full ">
+                    {parkingSpaces && parkingSpaces.map((space) => (
+                            <View key={space.id} className="flex flex-row items-center justify-center space-x-2 px-5 max-h-[43%]">
+                            <Image 
+                            source={{uri: space.image}}
+                            className="aspect-square flex min-w-[25%] min-h-[25%] rounded-lg"
+                            />
+                            <View className="flex flex-col border-b-[1px] border-b-neutral-200 w-[75%] h-full justify-between pb-2">
+                                <Text className="font-bold text-lg" numberOfLines={1}>{space.name}</Text>
+                                <View>
+                                    <Text className="font-semibold text-base">{space.permits.join(', ')}</Text>
+                                    <Text className="text-gray-500 text-base">{space.openspots} Available Spots</Text>
+                                    <Text className="text-gray-400 text-right font-light">1m ago</Text>
+                                </View>
+                            </View>
+                        </View>
+                    ))}
+                </ScrollView>
+            )} */}
+
+            <ScrollView showsVerticalScrollIndicator={false} className="flex flex-col min-w-full space-y-4 px-4 mb-20">
+
+            <View className="flex bg-neutral-100 rounded-full border border-neutral-200">
+                <TextInput 
+                style={styles.searchBarText} 
+                className="py-3 px-4" 
+                placeholder="Search" 
+                placeholderTextColor="#a3a3a3"
+                value={search}
+                onChangeText={(text) => setSearch(text)}
+                />
+            </View>
+
+            <View className="flex flex-row min-w-full justify-center">
+                <View className="flex flex-row bg-neutral-100 rounded-full p-[1px] border-[1px] border-neutral-200">
+                    <TouchableOpacity className={`${listView ? 'bg-emerald-800' : 'bg-neutral-100'} py-3 px-5 rounded-full`} onPress={toggleListView}>
+                        <Text className={`${listView ? 'text-white' : 'text-black'} font-semibold`}>List View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity className={`${!listView ? 'bg-emerald-800' : 'bg-neutral-100'} py-3 px-5 rounded-full`} onPress={toggleListView}>
+                        <Text className={`${!listView ? 'text-white' : 'text-black'} font-semibold`}>Card View</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+                {!listView && (
+                    <View className="space-y-4">
+                        {parkingSpaces && parkingSpaces.map((space) => (
+                            <TouchableOpacity
+                            onPress={() => { router.push({ pathname: `/parkingspace/${space.id}`, params: { id: space.id }})}}
+                            key={space.id} 
+                            className="flex flex-col space-y-2">
+                                <Image source={{uri: space.image}} className="aspect-[16/12] flex rounded-xl"/>
+                                <Text className="text-xl font-bold">{space.name}</Text>
+                                <View>
+                                    <Text style={styles.cardTextLg} className="font-semibold">Permits {space.permits.join(', ')}</Text>
+                                    <Text style={styles.cardTextLg} className="text-neutral-500">{space.openspots} available spots</Text>
+                                </View>
+                                <Text style={styles.cardTextBase}className="font-light text-neutral-400">1m ago</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                {listView && (
+                    <View className="space-y-4">
+                    {parkingSpaces && parkingSpaces.map((space) => (
+                        <TouchableOpacity 
+                        onPress={() => { router.push({ pathname: `/parkingspace/${space.id}`, params: { id: space.id }})}}
+                        key={space.id} 
+                        className="flex flex-row justify-between space-x-2">
+                            <Image source={{uri: space.image}} className="aspect-square flex rounded-md"/>
+                            <View className="flex flex-col flex-grow space-y-2 border-b border-b-neutral-200 pb-1">
+                                <Text style={styles.cardTextBase} className="font-bold w-[97%]" numberOfLines={1}>{space.name}</Text>
+                                <View>
+                                    <Text style={styles.cardTextMd}className="font-semibold">Permits {space.permits.join(', ')}</Text>
+                                    <Text style={styles.cardTextMd} className="text-neutral-500">{space.openspots} available spots</Text>
+                                </View>
+                                <Text className="text-right font-light text-neutral-400">1m ago</Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                    </View>
+                )}
+            </ScrollView>
+
+        </SafeAreaView>
+    )
+}
+
+export default App;
+
+const styles = StyleSheet.create({
+    cardTextLg: {
+      fontSize: 18,
+    },
+    cardTextBase: {
+        fontSize: 16,
+    },
+    cardTextMd: {
+        fontSize: 15,
+    },
+    searchBarText: {
+        fontSize: 15,
+        fontWeight: "500",
+    },
+    scrollViewContainer: {
+        display: "flex",
+        flexDirection: "column",
+    }
+  });
+
+      // useEffect(() => {
+    //     const getParkingSpaces = async () => {
+    //         try {
+    //             const data = await getDocs(parkingSpacesRef);
+    //             const filteredData = data.docs.map((doc) => ({
+    //                 ...doc.data(), 
+    //                 id: doc.id
+    //             }));
+    //             console.log(filteredData);
+    //             setParkingSpaces(filteredData);
+    //         } catch (error) {
+    //             console.log(error);
+    //         }
+    //     };
+    //     getParkingSpaces();
+    // }, [])
